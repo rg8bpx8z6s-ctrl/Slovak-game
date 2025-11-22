@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Игровой словацкий — учи играя</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#0f1a2b; --accent:#5C9BE6; --muted:#9fb0d6; --text:#e6eef8;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:linear-gradient(180deg,#081021,#071826); color:var(--text); -webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:28px auto;padding:18px}
+  header{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#3bb9c9);display:flex;align-items:center;justify-content:center;font-weight:700}
+  h1{margin:0;font-size:20px}
+  p.lead{margin:4px 0 0;color:var(--muted);font-size:14px}
+  main{margin-top:18px;display:grid;grid-template-columns:1fr 320px;gap:16px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:12px;padding:14px}
+  button.btn{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+  .muted{color:var(--muted)}
+  .levels{display:flex;gap:8px;margin-top:8px}
+  .lvl{padding:8px 10px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02)}
+  .active{outline:2px solid rgba(255,255,255,0.04)}
+  .lesson-list{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .lesson{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01)}
+  .center{display:flex;flex-direction:column;gap:10px}
+  .game-area{margin-top:6px}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .choice{padding:10px;border-radius:8px;background:rgba(255,255,255,0.03);cursor:pointer}
+  .small{font-size:13px;color:var(--muted)}
+  .hint{background:transparent;border:1px dashed var(--muted);color:var(--muted);padding:6px;border-radius:6px;cursor:pointer}
+  footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  input[type="text"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)}
+  .row{display:flex;gap:8px;align-items:center}
+  .stat{font-weight:700}
+  .teacher-area{margin-top:12px}
+  pre{white-space:pre-wrap;max-height:300px;overflow:auto;background:#071022;padding:8px;border-radius:8px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">S</div>
+      <div>
+        <h1>Игровой словацкий</h1>
+        <p class="lead">Учись словацкому в форме игры. Всё бесплатно, всё офлайн.</p>
+      </div>
+      <div style="margin-left:auto" class="small muted">Сохраняется локально в браузере</div>
+    </header>
+
+    <main>
+      <section class="card">
+        <div id="app-root" class="center">
+          <!-- Старт -->
+          <div id="start-screen">
+            <h2>Начать обучение</h2>
+            <p class="muted">Выбери действие:</p>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn" id="btn-test">Пройти тест уровня</button>
+              <button class="btn" id="btn-zero">Начать с нуля</button>
+              <button class="btn" id="btn-continue">Продолжить</button>
+            </div>
+            <div style="margin-top:12px" class="muted small">
+              Прогресс и очки хранятся в этом браузере. Учитель может посмотреть прогресс через экспорт.
+            </div>
+
+            <div style="margin-top:14px">
+              <h4>Слоты профилей</h4>
+              <div id="profiles" class="muted small"></div>
+              <div style="margin-top:8px">
+                <input id="new-name" type="text" placeholder="Имя ученика (для локального слота)" />
+                <button class="btn" id="create-slot">Создать слот</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Тест -->
+          <div id="test-screen" style="display:none">
+            <h3>Тест уровня</h3>
+            <div id="test-q" class="muted small"></div>
+            <div id="test-choices" class="choices"></div>
+            <div style="margin-top:10px" class="small muted">По результатам теста мы предложим подходящую программу.</div>
+            <div style="margin-top:8px"><button class="btn" id="back-from-test">Назад</button></div>
+          </div>
+
+          <!-- После теста: результаты и курс -->
+          <div id="after-test" style="display:none">
+            <h3 id="level-title">Уровень: </h3>
+            <div id="level-desc" class="muted small"></div>
+            <div style="margin-top:10px">
+              <button class="btn" id="start-course">Начать курс</button>
+              <button class="btn" id="back-to-start">Вернуться</button>
+            </div>
+            <div style="margin-top:12px" class="muted small">Ниже — материалы, которые ты будешь проходить.</div>
+            <div id="materials" style="margin-top:8px" class="muted small"></div>
+          </div>
+
+          <!-- Курс и уроки -->
+          <div id="course-screen" style="display:none;width:100%">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <h3 id="course-title">Курс</h3>
+                <div id="course-sub" class="muted small">Уровень</div>
+              </div>
+              <div class="small muted">
+                Очки: <span id="user-points">0</span>
+                &nbsp;•&nbsp; Пройдено уроков: <span id="done-count">0</span>
+              </div>
+            </div>
+
+            <div class="muted small">Выбери урок:</div>
+            <div id="lessons" class="lesson-list"></div>
+            <div style="margin-top:10px">
+              <button class="btn" id="back-to-home">В главное</button>
+              <button class="btn" id="export-progress">Экспорт прогресса (файл)</button>
+              <button class="btn" id="teacher-login">Панель учителя</button>
+            </div>
+          </div>
+
+          <!-- Урок -->
+          <div id="lesson-screen" style="display:none;width:100%">
+            <div style="display:flex;justify-content:space-between">
+              <div>
+                <h3 id="lesson-title">Урок</h3>
+                <div id="lesson-desc" class="muted small"></div>
+              </div>
+              <div class="small muted">Очки: <span id="points-top">0</span></div>
+            </div>
+
+            <div id="game-list" class="game-area"></div>
+
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="finish-lesson">Завершить урок</button>
+              <button class="hint" id="show-hint">Подсказка (стоимость: <span id="hint-cost">5</span>)</button>
+              <button class="btn" id="back-to-lessons">Назад к урокам</button>
+            </div>
+            <div id="hint-area" style="margin-top:8px;color:var(--muted)"></div>
+          </div>
+
+          <!-- Учитель -->
+          <div id="teacher-screen" style="display:none;width:100%">
+            <h3>Панель учителя</h3>
+            <div class="muted small">Пароль защищает доступ. Пароль: <strong>teacher123</strong></div>
+            <div style="margin-top:8px">
+              <button class="btn" id="import-json">Импорт прогресса (файл)</button>
+              <button class="btn" id="show-all">Показать все слоты</button>
+              <button class="btn" id="export-all">Экспорт всех слотов</button>
+            </div>
+            <div id="teacher-area" class="teacher-area muted small"></div>
+            <div style="margin-top:10px"><button class="btn" id="close-teacher">Закрыть</button></div>
+          </div>
+
+        </div>
+      </section>
+
+      <aside class="card">
+        <h4>Инфо</h4>
+        <div class="small muted">
+          Всё бесплатно. Можно открыть на телефоне/ПК. Для онлайн-наблюдения учителя — используйте экспорт/импорт JSON или подключите Google Sheets отдельно.
+        </div>
+
+        <div style="margin-top:12px">
+          <h4>Как это работает</h4>
+          <div class="muted small">
+            - Тест определяет стартовый уровень.<br>
+            - Уроки состоят из мини-игр: выбор, карточки, ввод.<br>
+            - За правильный ответ — очки; подсказки — стоят очков.<br>
+            - Прогресс хранится локально; можно экспортировать.
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h4>Полезно</h4>
+          <div class="muted small">Сохрани файл и загрузи на GitHub Pages чтобы получить публичную ссылку — это бесплатно.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>© <span id="year"></span> Игровой словацкий — сделано быстро и честно.</footer>
+  </div>
+
+<script>
+/* ====== Данные курса (примеры) ======
+   Структура: уровни -> уроки -> карточки/вопросы
+   Для реального курса просто расширяй этот массив.
+*/
+const COURSE = {
+  "A0": {
+    title: "A0 — Старт (с нуля)",
+    desc: "Алфавит, базовые слова, приветствия, цифры.",
+    materials: ["Алфавит и произношение","Приветствия","Числа 1-10","Семья","Цвета"],
+    lessons: [
+      { id:"a0-1", title:"Приветствия и базовые фразы",
+        desc:"Знакомство: ahoj, dobrý deň, ďakujem",
+        words:[
+          {sk:"ahoj", ru:"привет"},
+          {sk:"dobrý deň", ru:"добрый день"},
+          {sk:"ďakujem", ru:"спасибо"},
+          {sk:"prosím", ru:"пожалуйста"}
+        ]
+      },
+      { id:"a0-2", title:"Числа 1-5",
+        desc:"Учимся считать",
+        words:[
+          {sk:"jeden", ru:"один"},
+          {sk:"dva", ru:"два"},
+          {sk:"tri", ru:"три"},
+          {sk:"štyri", ru:"четыре"},
+          {sk:"päť", ru:"пять"}
+        ]
+      }
+    ]
+  },
+  "A1": {
+    title: "A1 — Начальный",
+    desc: "Больше слов, простые фразы, глаголы и времена.",
+    materials: ["Глаголы быть/иметь","Дни недели","Покупки"],
+    lessons: [
+      { id:"a1-1", title:"Семья",
+        desc:"Члены семьи",
+        words:[
+          {sk:"mama", ru:"мама"},
+          {sk:"otec", ru:"отец"},
+          {sk:"brat", ru:"брат"},
+          {sk:"sestra", ru:"сестра"}
+        ]
+      }
+    ]
+  },
+  "A2": {
+    title: "A2 — Ниже среднего",
+    desc: "Сложнее: описания, прошедшее время, разговорная лексика.",
+    materials: ["Прошедшее время","Расширенный словарь"],
+    lessons: [
+      { id:"a2-1", title:"Еда и напитки",
+        desc:"Заказ в кафе",
+        words:[
+          {sk:"chlieb", ru:"хлеб"},
+          {sk:"voda", ru:"вода"},
+          {sk:"káva", ru:"кофе"},
+          {sk:"hovädzie", ru:"говядина"}
+        ]
+      }
+    ]
+  }
+};
+
+/* ====== Хранилище и модели ====== */
+const STORAGE_KEY = "slovak_game_slots_v1";
+
+/* структура слота:
+{
+  id, name, created, lastVisit, level: "A0"/"A1", points: int, completedLessons: [lessonId...], progress: {lessonId:{games:..., score:...}}
+}
+*/
+
+function loadSlots(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+function saveSlots(slots){ localStorage.setItem(STORAGE_KEY, JSON.stringify(slots)); }
+function genId(){ return 's'+Math.random().toString(36).slice(2,9); }
+
+/* Текущий слот */
+let SLOTS = loadSlots();
+let CURRENT = null;
+
+/* ====== UI helpers ====== */
+function $(id){ return document.getElementById(id); }
+function show(el){ el.style.display="block"; }
+function hide(el){ el.style.display="none"; }
+
+/* ====== Инициализация стартового экрана ====== */
+function refreshProfiles(){
+  const p = $("profiles");
+  p.innerHTML = "";
+  if (SLOTS.length===0) p.textContent = "Слотов нет";
+  else {
+    SLOTS.forEach(s=>{
+      const d = document.createElement('div');
+      d.className="row";
+      d.style.justifyContent="space-between";
+      d.style.marginTop="6px";
+      d.innerHTML = `<div><strong>${s.name}</strong> <span class="muted small">(${new Date(s.lastVisit||s.created).toLocaleString()})</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="hint" data-id="${s.id}" data-act="load">Загрузить</button>
+          <button class="hint" data-id="${s.id}" data-act="del">Удалить</button>
+        </div>`;
+      p.appendChild(d);
+    });
+  }
+}
+
+/* Создать слот */
+$("create-slot").onclick = ()=>{
+  const name = $("new-name").value.trim() || "Ученик";
+  const s = { id: genId(), name, created: Date.now(), lastVisit: Date.now(), level:null, points: 20, completedLessons: [], progress:{ } };
+  SLOTS.push(s); saveSlots(SLOTS); $("new-name").value=""; refreshProfiles();
+};
+
+/* Обработка кнопок загрузки/удаления слота */
+document.getElementById('profiles').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const act = btn.dataset.act;
+  const slot = SLOTS.find(x=>x.id===id);
+  if(!slot) return;
+  if(act==="load"){
+    CURRENT = slot;
+    slot.lastVisit = Date.now();
+    saveSlots(SLOTS);
+    toCourseScreen();
+  } else if(act==="del"){
+    if(confirm('Удалить слот?')) {
+      SLOTS = SLOTS.filter(x=>x.id!==id);
+      saveSlots(SLOTS); refreshProfiles();
+    }
+  }
+});
+
+/* continue button: try load last used or first slot */
+$("btn-continue").onclick = ()=>{
+  if(SLOTS.length===0){ alert('Нет слотов — создайте новый или начните с нуля.'); return; }
+  CURRENT = SLOTS[0];
+  CURRENT.lastVisit = Date.now();
+  saveSlots(SLOTS);
+  toCourseScreen();
+};
+
+/* start with zero */
+$("btn-zero").onclick = ()=>{
+  const name = prompt("Имя ученика (локально):","Ученик") || "Ученик";
+  const s = { id: genId(), name, created: Date.now(), lastVisit: Date.now(), level:"A0", points: 20, completedLessons: [], progress:{} };
+  SLOTS.push(s); saveSlots(SLOTS);
+  CURRENT = s;
+  toAfterTest("A0", true); // auto start A0
+};
+
+/* тест */
+let TEST_QS = [
+  {q:"Как сказать 'привет' на словацком?", choices:[{t:"ahoj", ok:true},{t:"bonjour",ok:false},{t:"hola",ok:false}]},
+  {q:"Что значит 'ďakujem'?", choices:[{t:"спасибо",ok:true},{t:"пожалуйста",ok:false},{t:"до свидания",ok:false}]},
+  {q:"Как 'два' на словацком?", choices:[{t:"dva",ok:true},{t:"dos",ok:false},{t:"due",ok:false}]},
+  {q:"'voda' — это?", choices:[{t:"вода",ok:true},{t:"молоко",ok:false},{t:"чай",ok:false}]},
+  {q:"'mama' — это?", choices:[{t:"мама",ok:true},{t:"папа",ok:false},{t:"сестра",ok:false}]}
+];
+let testIndex=0, testCorrect=0;
+$("btn-test").onclick = ()=>{ testIndex=0; testCorrect=0; showTest(); };
+
+function showTest(){
+  hide($("start-screen"));
+  show($("test-screen"));
+  renderTestQ();
+}
+function renderTestQ(){
+  const q = TEST_QS[testIndex];
+  $("test-q").textContent = `Вопрос ${testIndex+1}/${TEST_QS.length}: ${q.q}`;
+  const ch = $("test-choices"); ch.innerHTML="";
+  q.choices.forEach(c=>{
+    const b = document.createElement('div'); b.className='choice';
+    b.textContent = c.t; b.onclick = ()=>{
+      if(c.ok) testCorrect++;
+      testIndex++;
+      if(testIndex>=TEST_QS.length) finishTest();
+      else renderTestQ();
+    };
+    ch.appendChild(b);
+  });
+}
+$("back-from-test").onclick = ()=>{
+  show($("start-screen")); hide($("test-screen"));
+};
+function finishTest(){
+  hide($("test-screen"));
+  const perc = Math.round(testCorrect/TEST_QS.length*100);
+  let level = "A0";
+  if(perc >= 80) level="A2";
+  else if(perc >= 50) level="A1";
+  toAfterTest(level, false, testCorrect);
+}
+
+/* После теста */
+function toAfterTest(level, forceStart=false, correctCount=0){
+  hide($("start-screen"));
+  show($("after-test"));
+  $("level-title").textContent = `Уровень: ${level}`;
+  $("level-desc").textContent = (COURSE[level].desc || "");
+  $("materials").textContent = (COURSE[level].materials||[]).join(", ");
+  $("start-course").onclick = ()=>{
+    if(!CURRENT){ // create temporary slot
+      const name = prompt("Имя ученика:","Ученик") || "Ученик";
+      const s = { id: genId(), name, created: Date.now(), lastVisit: Date.now(), level, points:20, completedLessons: [], progress:{} };
+      SLOTS.push(s); saveSlots(SLOTS); CURRENT = s;
+    } else {
+      CURRENT.level = level;
+      CURRENT.lastVisit = Date.now();
+    }
+    saveSlots(SLOTS);
+    toCourseScreen();
+  };
+  $("back-to-start").onclick = ()=>{
+    hide($("after-test")); show($("start-screen"));
+  };
+  if(forceStart){ $("start-course").click(); }
+}
+
+/* Course screen */
+function toCourseScreen(){
+  hide($("start-screen")); hide($("test-screen")); hide($("after-test"));
+  show($("course-screen"));
+  renderCourse();
+}
+function renderCourse(){
+  if(!CURRENT) return;
+  $("course-title").textContent = `${CURRENT.name} — ${COURSE[CURRENT.level]?.title || 'Курс'}`;
+  $("course-sub").textContent = COURSE[CURRENT.level]?.desc || "";
+  $("user-points").textContent = CURRENT.points || 0;
+  $("done-count").textContent = CURRENT.completedLessons.length || 0;
+  const lessonsContainer = $("lessons"); lessonsContainer.innerHTML = "";
+  const lessons = COURSE[CURRENT.level]?.lessons || [];
+  lessons.forEach(ls=>{
+    const div = document.createElement('div'); div.className='lesson';
+    const left = document.createElement('div');
+    left.innerHTML = `<div><strong>${ls.title}</strong><div class="muted small">${ls.desc}</div></div>`;
+    const right = document.createElement('div'); 
+    const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Открыть'; btn.onclick=()=>openLesson(ls.id);
+    right.appendChild(btn);
+    div.appendChild(left); div.appendChild(right);
+    lessonsContainer.appendChild(div);
+  });
+}
+
+/* Open lesson by id */
+function openLesson(lessonId){
+  const lessons = COURSE[CURRENT.level].lessons;
+  const ls = lessons.find(x=>x.id===lessonId);
+  if(!ls) return alert('Урок не найден');
+  hide($("course-screen")); show($("lesson-screen"));
+  $("lesson-title").textContent = ls.title;
+  $("lesson-desc").textContent = ls.desc;
+  $("points-top").textContent = CURRENT.points;
+  renderLessonGames(ls);
+}
+
+/* Render mini-games for lesson */
+function renderLessonGames(ls){
+  const area = $("game-list"); area.innerHTML = "";
+  // 1) Multiple choice per word (one question)
+  const mcDiv = document.createElement('div');
+  mcDiv.innerHTML = `<h4>Игра: Выбери перевод</h4><div class="muted small">Нажми на правильный перевод слова</div>`;
+  const word = ls.words[Math.floor(Math.random()*ls.words.length)];
+  const question = document.createElement('div'); question.style.marginTop='8px';
+  question.innerHTML = `<div><strong>${word.sk}</strong></div>`;
+  const choices = document.createElement('div'); choices.className='choices';
+  // build 4 choices
+  const opts = [word.ru];
+  // pick random other translations
+  const pool = [].concat(...Object.values(COURSE).map(c=>c.lessons).flat().map(l=>l.words)).filter(w=>w.ru!==word.ru);
+  while(opts.length<4 && pool.length){
+    const pick = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    if(!opts.includes(pick.ru)) opts.push(pick.ru);
+  }
+  shuffle(opts);
+  opts.forEach(opt=>{
+    const c = document.createElement('div'); c.className='choice'; c.textContent=opt;
+    c.onclick = ()=>{
+      if(opt===word.ru){
+        CURRENT.points = (CURRENT.points||0)+10;
+        alert('Правильно! +10 очков');
+        saveSlots(SLOTS);
+        $("points-top").textContent = CURRENT.points;
+        renderLessonGames(ls); // новый рандом
+      } else {
+        alert('Неверно. Подсказка доступна слева.');
+      }
+    };
+    choices.appendChild(c);
+  });
+  mcDiv.appendChild(question); mcDiv.appendChild(choices);
+  area.appendChild(mcDiv);
+
+  // 2) Match cards (simple)
+  const matchDiv = document.createElement('div');
+  matchDiv.style.marginTop='12px';
+  matchDiv.innerHTML = `<h4>Игра: Соедини карточки</h4><div class="muted small">Нажми на слово и выбери перевод</div>`;
+  const w2 = ls.words[Math.floor(Math.random()*ls.words.length)];
+  const leftCol = document.createElement('div'); leftCol.style.marginTop='8px';
+  const aBtn = document.createElement('button'); aBtn.className='btn'; aBtn.textContent = `Нажми: ${w2.sk}`; aBtn.onclick=()=> {
+    const ans = prompt(`Выберите перевод для "${w2.sk}":`, '');
+    if(ans && ans.trim().toLowerCase() === w2.ru.toLowerCase()){
+      CURRENT.points += 8;
+      alert('Правильно! +8 очков');
+      saveSlots(SLOTS);
+      $("points-top").textContent = CURRENT.points;
+    } else alert('Нет, не то');
+  };
+  matchDiv.appendChild(aBtn);
+  area.appendChild(matchDiv);
+
+  // 3) Type the word
+  const typeDiv = document.createElement('div');
+  typeDiv.style.marginTop='12px';
+  typeDiv.innerHTML = `<h4>Игра: Введи слово</h4><div class="muted small">Напиши слово на словацком по переводу</div>`;
+  const w3 = ls.words[Math.floor(Math.random()*ls.words.length)];
+  const input = document.createElement('input'); input.type='text'; input.placeholder = `Введите словацкое слово для: ${w3.ru}`;
+  input.style.marginTop='8px';
+  const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Проверить';
+  btn.style.marginLeft='8px';
+  btn.onclick = ()=>{
+    if(input.value.trim().toLowerCase() === w3.sk.toLowerCase()){
+      CURRENT.points += 12;
+      alert('Отлично! +12 очков');
+      saveSlots(SLOTS);
+      $("points-top").textContent = CURRENT.points;
+      input.value='';
+    } else alert('Неверно. Попробуй ещё или используй подсказку.');
+  };
+  typeDiv.appendChild(input); typeDiv.appendChild(btn);
+  area.appendChild(typeDiv);
+
+  // Save current lesson id for hint logic
+  area.dataset.currentLesson = ls.id;
+}
+
+/* Finish lesson: mark completed and reward */
+$("finish-lesson").onclick = ()=>{
+  const lessonId = $("game-list").dataset.currentLesson;
+  if(!lessonId) return;
+  if(!CURRENT.completedLessons.includes(lessonId)) CURRENT.completedLessons.push(lessonId);
+  // reward bonus
+  CURRENT.points += 20;
+  saveSlots(SLOTS);
+  alert('Урок завершён! Бонус: +20 очков');
+  $("points-top").textContent = CURRENT.points;
+  toCourseScreen();
+};
+
+/* Hint: cost and logic */
+const HINT_COST = 5;
+$("show-hint").onclick = ()=>{
+  if(CURRENT.points < HINT_COST) return alert('Недостаточно очков на подсказку.');
+  const lessonId = $("game-list").dataset.currentLesson;
+  if(!lessonId) return alert('Открой урок, чтобы использовать подсказку.');
+  CURRENT.points -= HINT_COST;
+  saveSlots(SLOTS);
+  $("points-top").textContent = CURRENT.points;
+  const ls = COURSE[CURRENT.level].lessons.find(x=>x.id===lessonId);
+  const w = ls.words[Math.floor(Math.random()*ls.words.length)];
+  // reveal part of словацкого слова
+  const reveal = w.sk.slice(0, Math.max(1, Math.floor(w.sk.length/2)));
+  $("hint-area").textContent = `Подсказка: слово "${w.ru}" — начинается на "${reveal}..."`;
+};
+
+/* Back to lessons */
+$("back-to-lessons").onclick = ()=>{ hide($("lesson-screen")); show($("course-screen")); renderCourse(); };
+$("back-to-home").onclick = ()=>{ hide($("course-screen")); show($("start-screen")); refreshProfiles(); };
+
+/* Export progress (single slot) */
+$("export-progress").onclick = ()=>{
+  if(!CURRENT) return alert('Нет активного слота.');
+  const data = JSON.stringify(CURRENT, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `${CURRENT.name}_progress.json`; a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* Teacher panel */
+$("teacher-login").onclick = ()=>{
+  const pw = prompt('Пароль для панели учителя:');
+  if(pw !== 'teacher123') return alert('Неверный пароль');
+  hide($("course-screen")); show($("teacher-screen"));
+};
+$("close-teacher").onclick = ()=>{
+  hide($("teacher-screen")); show($("course-screen"));
+};
+
+$("show-all").onclick = ()=>{
+  const area = $("teacher-area"); area.innerHTML = "";
+  if(SLOTS.length===0) area.textContent = "Слотов нет";
+  else {
+    SLOTS.forEach(s=>{
+      const div = document.createElement('div');
+      div.style.marginTop='8px';
+      div.innerHTML = `<strong>${s.name}</strong> — Уровень: ${s.level || '-'} — Очки: ${s.points} — Уроки: ${s.completedLessons.length}`;
+      const btn = document.createElement('button'); btn.className='hint'; btn.textContent='Показать детали';
+      btn.onclick = ()=> {
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(s, null, 2);
+        area.appendChild(pre);
+      };
+      div.appendChild(btn);
+      area.appendChild(div);
+    });
+  }
+};
+
+$("export-all").onclick = ()=>{
+  const data = JSON.stringify(SLOTS, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `all_slots.json`; a.click();
+  URL.revokeObjectURL(url);
+};
+
+$("import-json").onclick = ()=>{
+  const input = document.createElement('input'); input.type='file'; input.accept='.json';
+  input.onchange = ()=>{
+    const file = input.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e=> {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if(Array.isArray(imported)) {
+          // merge
+          imported.forEach(s=>{
+            if(!s.id) s.id = genId();
+            SLOTS.push(s);
+          });
+        } else if(typeof imported === 'object') {
+          if(!imported.id) imported.id = genId();
+          SLOTS.push(imported);
+        } else throw new Error('Неверный формат');
+        saveSlots(SLOTS); alert('Импортировано.'); refreshProfiles();
+      } catch(err){ alert('Ошибка импорта: '+err.message); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+};
+
+/* Utility shuffle */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
+
+/* On load */
+document.addEventListener('DOMContentLoaded', ()=>{
+  $("year").textContent = new Date().getFullYear();
+  refreshProfiles();
+  // set hint cost
+  $("hint-cost").textContent = HINT_COST;
+});
+
+/* Helper: open lesson by searching across level */
+function findLessonById(id){
+  for(const lvl of Object.keys(COURSE)){
+    const ls = COURSE[lvl].lessons.find(x=>x.id===id);
+    if(ls) return {lvl, lesson: ls};
+  }
+  return null;
+}
+
+/* Allow direct open by lesson id */
+function openLesson(id){
+  const found = findLessonById(id);
+  if(!found) return alert('Урок не найден');
+  // if user level doesn't match, set level for user
+  if(CURRENT && CURRENT.level !== found.lvl){
+    if(!confirm(`У тебя уровень ${CURRENT.level || 'не задан'}. Перейти к уровню ${found.lvl}?`)) return;
+    CURRENT.level = found.lvl;
+  } else if(!CURRENT){
+    CURRENT = { id: genId(), name: 'Гость', created: Date.now(), lastVisit: Date.now(), level: found.lvl, points:20, completedLessons: [], progress:{} };
+    SLOTS.push(CURRENT); saveSlots(SLOTS);
+  }
+  hide($("course-screen")); show($("lesson-screen"));
+  $("lesson-title").textContent = found.lesson.title;
+  $("lesson-desc").textContent = found.lesson.desc;
+  $("points-top").textContent = CURRENT.points;
+  renderLessonGames(found.lesson);
+}
+
+/* keyboard shortcuts (удобство) */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    // back to home
+    hide($("course-screen")); hide($("lesson-screen")); hide($("teacher-screen")); hide($("test-screen")); hide($("after-test"));
+    show($("start-screen"));
+  }
+});
+
+</script>
+</body>
+</html>
